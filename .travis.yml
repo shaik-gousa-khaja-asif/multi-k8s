@@ -1,0 +1,27 @@
+sudo: required
+services:
+   - docker
+env:
+   global:
+     - SHA=$(git rev-parse HEAD)
+     - CLOUDSDK_CORE_DISABLE_PROMPTS=1
+before_install:
+   - openssl aes-256-cbc -K $encrypted_2ef0014f522b_key -iv $encrypted_2ef0014f522b_iv -in master-charmer-340908-2b9e6860fdff.json.enc -out master-charmer-340908-2b9e6860fdff.json -d
+   - curl https://sdk.cloud.google.com | bash > /dev/null;
+   - source $HOME/google-cloud-sdk/path.bash.inc
+   - gcloud components update kubectl
+   - gcloud auth activate-service-account --key-file service-account.json 
+   - gcloud config set project multi-k8s-340908
+   - gcloud config set compute/zone asia-east1-a
+   - gcloud container clusters get-credentials multi-cluster
+   - echo "$DOCKER _PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+   - docker build -t sgkasif/react-test -f ./client/Dockerfile.dev ./client
+
+script:
+   - docker run -e CI=true sgkasif/react-test npm test
+
+deploy:
+   provide: script
+   script: bash ./deploy.sh
+   on:
+     branch: master
